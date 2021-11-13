@@ -1,0 +1,64 @@
+# !/bin/bash
+
+mail_array=()
+
+function APIconnection(){
+
+	for mail in ${mail_array[@]}
+		do
+			echo -e "\n\n = = = = = Recolectando informacion de: $mail = = = = =" 
+			curl https://haveibeenpwned.com/api/v3/breachedaccount/$mail?truncateResponse=false -H "hibp-api-key: $key" -o "JSON/pwned-accounts_$mail.json"
+		done
+		
+	echo -e "\n\n#########################################################################################\n\n"
+	
+	for mail in ${mail_array[@]}
+		do
+			if [ -s JSON/pwned-accounts_$mail.json ] || [ -d JSON/pwned-accounts_$mail.json ] ; then
+				echo -e "\n = = = = = Cuenta vulnerada - Informacion de la cuenta: $mail = = = = =" 
+				echo -e "\nTiutlo de la pagina:"
+				sed -E 's/.*Title"?:([^,}]+).*/\1/' JSON/pwned-accounts_$mail.json
+				echo -e "\nDominio de la pagina:"
+				sed -E 's/.*Domain"?:([^,}]+).*/\1/' JSON/pwned-accounts_$mail.json
+				echo -e "\nFecha de la vulnerabilidad:"
+				sed -E 's/.*BreachDate"?:([^,}]+).*/\1/' JSON/pwned-accounts_$mail.json
+				echo -e "\nNo. de Cuenta vulnerada:"
+				sed -E 's/.*PwnCount"?:([^,}]+).*/\1/' JSON/pwned-accounts_$mail.json
+				echo -e "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =\n"
+				
+			else
+				echo -e "El correo $mail no ha sido vulnerado"
+			fi
+		done 
+}
+
+function Validation(){
+	if test "$ruta" = ""; then 
+    	echo -e "\n\nHay que introducir una ruta de archivo de texto para poder ejecutar este programa"
+	else
+		extension="${ruta##*.}"
+
+		if [ $extension != "txt" ]; then
+    		echo -e "\n\nEl archivo debe de terminar en .txt"
+		else
+			if [ -f "$ruta" ]; then
+				while IFS= read -r line
+					do
+			 			mail_array+=("$line")
+					done < $ruta
+        		APIconnection
+    		else 
+        		echo -e "\n\nEl archivo no existe"
+    		fi
+		fi
+	fi
+}
+
+function main(){
+	read -p "Ingresa la ruta del archivo de los correos a buscar: " ruta
+	read -s -p "Ingrese su 'API Key' de haveibeenpwned: " key
+	mkdir JSON
+	Validation
+}
+
+main
